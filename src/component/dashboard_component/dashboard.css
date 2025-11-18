@@ -1,0 +1,109 @@
+.dashboard-container {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+}
+
+.back-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background: #3498db;
+  color: white;
+  transition: background 0.2s;
+}
+
+.back-btn:hover {
+  background: #217dbb;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.card {
+  padding: 16px 20px;
+  border-radius: 12px;
+  color: white;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.card h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.card-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.card-sub {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+/* Màu cho từng loại */
+.card.temperature {
+  background: linear-gradient(135deg, #ff7a59, #ffb347);
+}
+
+.card.humidity {
+  background: linear-gradient(135deg, #3498db, #5dade2);
+}
+
+.card.light {
+  background: linear-gradient(135deg, #f1c40f, #f39c12);
+}
+
+.card.soil{
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+}
+
+.history-table-wrapper h2 {
+  margin-bottom: 12px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.history-table th,
+.history-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 0.95rem;
+}
+
+.history-table thead {
+  background: #f6f7fb;
+}
+
+.history-table tr:nth-child(even) {
+  background: #fafafa;
+}

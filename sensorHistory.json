@@ -1,0 +1,19 @@
+{
+  "sensorHistory": {
+    "1": {
+      "time": "2025-11-18 10:00:00",
+      "temperature": 27.5,
+      "humidity": 63,
+      "soil_moisture": 42.5,
+      "light": 1
+    },
+    "2": {
+      "time": "2025-11-18 10:00:05",
+      "temperature": 27.7,
+      "humidity": 62,
+      "soil_moisture": 43.0,
+      "light": 0
+    }
+  }
+}
+
