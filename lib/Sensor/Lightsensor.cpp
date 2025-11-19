@@ -12,26 +12,73 @@ LightSensor_wRelay::LightSensor_wRelay(uint8_t pin, uint8_t relayPin, PubSubClie
     pin(pin), relayPin(relayPin), 
     client(mqttClient), 
     topic(mqttTopic),
-    lightStatus(false) {}
+    lightStatus(false), 
+    autoMode(true), //mặc định là chạy auto
+    manual(false),
+    relayStatus(false) {}
 
 void LightSensor_wRelay::begin() {
   pinMode(pin, INPUT);
   pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, LOW); // Relay off by default
+  //digitalWrite(relayPin, LOW); // Relay off by default
+  relayStatus = false;
+  RelayOutput();
 }
 
 bool LightSensor_wRelay::getLightStatus() {
   return lightStatus;
 }
 
+bool LightSensor_wRelay::getRelayStatus() const {
+  return relayStatus;
+}
+
+void LightSensor_wRelay::AutoMode(bool ena) {
+  autoMode = ena;
+  Serial.print("Light Sensor Auto Mode: ");
+  Serial.println(autoMode ? "ON" : "OFF");
+}
+
+bool LightSensor_wRelay::isAutoMode() const {
+  return autoMode;
+}
+
+void LightSensor_wRelay::setManualRelay(bool on) {
+  autoMode = false; //Tắt auto khi điều khiển tay
+  manual = on;
+  Serial.print("Light manual control: ");
+  Serial.println(on ? "ON" : "OFF");
+  RelayOutput();
+}
+
+void LightSensor_wRelay::RelayOutput() {
+  digitalWrite(relayPin, relayStatus ? LOW : HIGH); 
+}
 void LightSensor_wRelay::run() {
   while (1) {
-    lightStatus = digitalRead(pin);
+    int a = digitalRead(pin);
+    lightStatus = (a == HIGH); // Giả sử HIGH là có ánh sáng, LOW là tối
     fb_light = lightStatus ? 1 : 0;
-    Serial.print("Light Status (1 = Sang, 0 = Toi): ");
-    Serial.println(lightStatus);
+    bool targetRelay = relayStatus;
+    if(autoMode){
+      bool Dark = (lightStatus == false);
+      targetRelay = Dark; //Nếu tối thì bật relay
+    }else{
+      targetRelay = manual;
+    }
+    if(targetRelay != relayStatus){
+      relayStatus = targetRelay;
+      RelayOutput();
 
-    digitalWrite(relayPin, lightStatus ? LOW : HIGH); // Turn on relay if light is detected
+      Serial.print("Relay turned ");;
+      Serial.print(autoMode ? "AUTO" : "MANUAL");
+      Serial.print(" -> ");
+      Serial.println(relayStatus ? "ON" : "OFF");
+    }
+    Serial.print("Light Status: ");
+    Serial.println(lightStatus ? "Sáng" : "Tối");
+
+    //digitalWrite(relayPin, lightStatus ? LOW : HIGH); // Turn on relay if light is detected
     // String fbJson = "{";
     // fbJson += "\"device_id\": \"" + String(light_device_ID) + "\",";
     // fbJson += "\"light_status\": " + String(lightStatus ? 1 : 0);

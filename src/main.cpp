@@ -36,6 +36,7 @@ uint32_t light_sendInterval = 10000;
 uint32_t sm_sendInterval = 10000; 
 
 DynamicJsonDocument configDoc(256);
+DynamicJsonDocument controlDoc(256);
 
 const char* mqtt_server = "192.168.90.50";
 const int mqtt_port = 1883;
@@ -191,6 +192,43 @@ void firebaseConfig_Task(void* pvParameters){
       }
     }
     vTaskDelay(pdMS_TO_TICKS(10000)); //Kiểm tra config mỗi 10 giây
+  }
+}
+
+void firebaseControl_Task(void* pvParameters){
+  Serial.println("FirebaseControlTask STARTED on core " + String(xPortGetCoreID()));
+  for(;;){
+    //Lấy lệnh điều khiển từ Firebase
+    if(firebaseGet("/control", controlDoc)){
+      bool lightAuto = true;
+      bool lightManual = false;
+      bool pumpOn = false;
+      if(controlDoc.containsKey("lightAuto")){
+        lightAuto = controlDoc["lightAuto"];
+      }
+      if(controlDoc.containsKey("light")){
+        lightManual = controlDoc["light"];
+      }
+      if(controlDoc.containsKey("pump")){
+        pumpOn = controlDoc["pump"];
+      }
+      LightSensor.AutoMode(lightAuto);
+      //Nếu manual thì đè trạng thái tay này
+      if(!lightAuto){
+        LightSensor.setManualRelay(lightManual);
+      }
+      SoilMoisture.setPumpControl(pumpOn);
+
+      Serial.print("Control updated from Firebase:");
+      Serial.print(" lightAuto: ");
+      Serial.print(lightAuto ? "AUTO" : "MANUAL");
+      Serial.print(", light: ");
+      Serial.print(lightManual ? "ON" : "OFF");
+      Serial.print(", pump: ");
+      Serial.println(pumpOn ? "ON" : "OFF");
+    }
+    controlDoc.clear();
+    vTaskDelay(pdMS_TO_TICKS(5000)); //Kiểm tra lệnh mỗi 5 giây
   }
 }
 
