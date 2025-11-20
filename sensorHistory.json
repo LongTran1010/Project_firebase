@@ -1,4 +1,21 @@
 {
+  "control": {
+	"lightAuto": true,
+    "light": true,
+    "pump": false
+  },
+  "fingerHistory": {
+    "-NxAbc123": {
+      "time": "2025-11-18 15:30:00",
+      "finger_id": 3,
+      "status": "OK"
+    },
+    "-NxAbc456": {
+      "time": "2025-11-18 15:40:12",
+      "finger_id": 7,
+      "status": "FAIL"
+    }
+  },
   "sensorHistory": {
     "1": {
       "time": "2025-11-18 10:00:00",
@@ -16,4 +33,3 @@
     }
   }
 }
-
