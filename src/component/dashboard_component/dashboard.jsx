@@ -3,11 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./dashboard.css";
 
 import { database } from "../../dtb/firebase";
-import {
-  ref,
-  onValue,
-  set,
-} from "firebase/database";
+import { ref, onValue, set } from "firebase/database";
 
 import {
   ResponsiveContainer,
@@ -46,7 +42,7 @@ export default function Dashboard() {
   const [fingerHistory, setFingerHistory] = useState([]);
   const [now, setNow] = useState(new Date());
 
-  // Cập nhật đồng hồ trên UI
+  // Cập nhật đồng hồ
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
@@ -55,7 +51,6 @@ export default function Dashboard() {
   // Lắng nghe sensorHistory
   useEffect(() => {
     const historyRef = ref(database, "sensorHistory");
-
     const unsubscribe = onValue(historyRef, (snapshot) => {
       const obj = snapshot.val();
       if (!obj) {
@@ -63,46 +58,34 @@ export default function Dashboard() {
         setLatest(null);
         return;
       }
-
       const arr = Object.entries(obj).map(([id, row]) => ({
         id,
         ...row,
       }));
-
-      // sắp xếp theo id tăng dần
       arr.sort((a, b) => {
-        if (a.time && b.time) {
-          return a.time.localeCompare(b.time);
-        }
+        if (a.time && b.time) return a.time.localeCompare(b.time);
         return Number(a.id) - Number(b.id);
       });
-
-      // lưu toàn bộ (cho chart), nhưng giới hạn 50 mẫu là đủ
       const all = arr.slice(-50);
       setHistory(all);
-
-      // mẫu mới nhất
       setLatest(all[all.length - 1]);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Lắng nghe trạng thái điều khiển
+  // Lắng nghe control
   useEffect(() => {
     const controlRef = ref(database, "control");
     const unsubscribe = onValue(controlRef, (snapshot) => {
       const val = snapshot.val() || {};
       setLightOn(!!val.light);
       setPumpOn(!!val.pump);
-      setLightAuto(
-        val.lightAuto !== undefined ? !!val.lightAuto : true // default AUTO
-      );
+      setLightAuto(val.lightAuto !== undefined ? !!val.lightAuto : true);
     });
     return () => unsubscribe();
   }, []);
 
-  // Lắng nghe lịch sử vân tay
+  // Lắng nghe fingerHistory
   useEffect(() => {
     const fingerRef = ref(database, "fingerHistory");
     const unsubscribe = onValue(fingerRef, (snapshot) => {
@@ -111,50 +94,37 @@ export default function Dashboard() {
         setFingerHistory([]);
         return;
       }
-      const arr = Object.entries(obj).map(([id, row]) => ({
-        id,
-        ...row,
-      }));
-
-      // sort theo thời gian thêm (Firebase push key ~ tăng dần)
-      arr.sort((a, b) => (a.id > b.id ? -1 : 1)); // mới nhất trước
-      setFingerHistory(arr.slice(0, 8)); // chỉ lấy 8 dòng gần nhất
+      const arr = Object.entries(obj).map(([id, row]) => ({ id, ...row }));
+      arr.sort((a, b) => (a.id > b.id ? -1 : 1));
+      setFingerHistory(arr.slice(0, 8));
     });
     return () => unsubscribe();
   }, []);
 
-  // Toggle light/pump -> ghi lên Firebase
-  const handleToggleLight = () => {
-    if(lightAuto) return; // nếu đang auto thì không cho toggle
-    set(ref(database, "control/light"), !lightOn);
+  // -- HANDLERS --
+
+  // Xử lý bật tắt Auto bằng Switch
+  const handleAutoSwitch = (e) => {
+    const isAuto = e.target.checked;
+    setLightAuto(isAuto);
+    set(ref(database, "control/lightAuto"), isAuto);
   };
 
-  const handleTogglePump = () => {
-    set(ref(database, "control/pump"), !pumpOn);
-  };
-  //chế độ auto
-  const handleSetLightAuto = () => {
-    setLightAuto(true);
-    set(ref(database, "control/lightAuto"), true);
-  }
-
-  // Toggle lightAuto
-  const handleSetLightManual = () => {
-    setLightAuto(false);
-    set(ref(database, "control/lightAuto"), false);
+  // Xử lý bật tắt Đèn bằng Switch
+  const handleLightSwitch = (e) => {
+    if (lightAuto) return; // Nếu đang Auto thì không làm gì (hoặc input đã disabled)
+    const isOn = e.target.checked;
+    set(ref(database, "control/light"), isOn);
   };
 
-  const handleIconToggleLight = () => {
-    if(lightAuto) return; // nếu đang auto thì không cho toggle
-    handleToggleLight();
+  // Xử lý bật tắt Bơm bằng Switch
+  const handlePumpSwitch = (e) => {
+    const isOn = e.target.checked;
+    set(ref(database, "control/pump"), isOn);
   };
 
-  const handleIconTogglePump = () => {
-    handleTogglePump();
-  }
-  // Data cho chart
   const chartData = history.map((row) => ({
-    timeLabel: row.time ? row.time.slice(11, 19) : row.id, // HH:MM:SS
+    timeLabel: row.time ? row.time.slice(11, 19) : row.id,
     temperature: row.temperature,
     humidity: row.humidity,
   }));
@@ -172,7 +142,7 @@ export default function Dashboard() {
       </div>
 
       <div className="dashboard-grid">
-        {/* 1) Card thời gian + nhiệt độ */}
+        {/* 1) Card thời gian */}
         <div className="card card-clock">
           <div className="card-clock-date">{dateStr}</div>
           <div className="card-clock-time">{timeStr}</div>
@@ -182,11 +152,11 @@ export default function Dashboard() {
               : "-- °C"}
           </div>
           <div className="card-clock-sub">
-            Cập nhật cảm biến: {latest ? latest.time : "N/A"}
+            Cập nhật: {latest ? latest.time : "N/A"}
           </div>
         </div>
 
-        {/* 2) Cụm độ ẩm không khí */}
+        {/* 2) Độ ẩm KK */}
         <div className="card card-humidity">
           <h2>Độ ẩm không khí</h2>
           <p className="card-big-value">
@@ -195,7 +165,7 @@ export default function Dashboard() {
               : "-- %"}
           </p>
           <p className="card-sub">
-            Lần cập nhật: {latest ? latest.time : "N/A"}
+            Cập nhật: {latest ? latest.time : "N/A"}
           </p>
         </div>
 
@@ -208,113 +178,89 @@ export default function Dashboard() {
               : "-- %"}
           </p>
           <p className="card-sub">
-            Lần cập nhật: {latest ? latest.time : "N/A"}
+            Cập nhật: {latest ? latest.time : "N/A"}
           </p>
         </div>
 
-        {/* 4) Ánh sáng: Sáng / Tối */}
+        {/* 4) Ánh sáng */}
         <div className="card card-light">
           <h2>Ánh sáng</h2>
           <p className="card-big-value">
             {latest ? formatLight(latest.light) : "--"}
           </p>
-          <p className="card-sub">
-            Cảm biến quang: {latest ? formatLight(latest.light) : "N/A"}
-          </p>
+          <p className="card-sub">Trạng thái: {latest ? formatLight(latest.light) : "N/A"}</p>
         </div>
 
-        {/* 5) Điều khiển đèn & bơm */}
+        {/* 5) ĐIỀU KHIỂN*/}
         <div className="card card-control">
           <h2>Điều khiển thiết bị</h2>
 
-          {/* Hàng điều khiển ĐÈN */}
           <div className="control-tiles-row">
-            {/* Tile ĐÈN */}
+            {/* Tile ĐÈN: Có 2 switch (Auto và Nguồn) */}
             <div className="device-tile device-tile-light">
-              <div className="device-tile-title">Đèn</div>
-
-              <div className="device-tile-mode-buttons">
-                <button
-                  type="button"
-                  className={`mode-chip ${lightAuto ? "active" : ""}`}
-                  onClick={handleSetLightAuto}
-                >
-                  <span className="mode-chip-icon">⚙️</span>
-                  <span className="mode-chip-text">AUTO</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={`mode-chip ${!lightAuto ? "active" : ""}`}
-                  onClick={handleSetLightManual}
-                >
-                  <span className="mode-chip-icon">✋</span>
-                  <span className="mode-chip-text">TAY</span>
-                </button>
+              <div className="device-tile-title">Hệ thống Đèn</div>
+              
+              {/* Switch 1: Chế độ Tự động */}
+              <div className="switch-row">
+                <span className="switch-label">
+                  <span className="switch-icon">⚙️</span> AUTO
+                </span>
+                <label className="switch">
+                  <input 
+                    type="checkbox" 
+                    checked={lightAuto} 
+                    onChange={handleAutoSwitch} 
+                  />
+                  <span className="slider round"></span>
+                </label>
               </div>
 
-            <div className="device-tile-footer">
-              <div 
-                className={`device-icon-btn ${lightOn ? "on" : "off"} ${
-                  lightAuto ? "disabled" : ""
-                }`}
-                onClick={handleIconToggleLight}
-              >
-                💡
+              {/* Switch 2: Bật/Tắt Đèn (Disable nếu đang Auto) */}
+              <div className="switch-row">
+                <span className="switch-label">
+                  <span className="switch-icon">💡</span> Đèn
+                </span>
+                <label className="switch">
+                  <input 
+                    type="checkbox" 
+                    checked={lightOn} 
+                    onChange={handleLightSwitch}
+                    disabled={lightAuto}
+                  />
+                  <span className="slider round"></span>
+                </label>
               </div>
-              <div className="device-tile-chevron">»»</div>
             </div>
-          </div>
 
-          {/* Hàng điều khiển BƠM */}
-          <div className="device-tile device-tile-pump">
-            <div className="device-tile-title">Bơm</div>
-            <div className="device-tile-footer">
-              <div className={`device-icon-btn ${pumpOn ? "on" : "off"}`}
-                onClick={handleIconTogglePump}>
-                💧
+            {/* Tile BƠM: Chỉ có 1 switch Nguồn */}
+            <div className="device-tile device-tile-pump">
+              <div className="device-tile-title">Hệ thống Bơm</div>
+              
+              <div className="switch-row" style={{ marginTop: 'auto', marginBottom: 'auto' }}>
+                <span className="switch-label">
+                  <span className="switch-icon">💧</span> Bơm nước
+                </span>
+                <label className="switch">
+                  <input 
+                    type="checkbox" 
+                    checked={pumpOn} 
+                    onChange={handlePumpSwitch} 
+                  />
+                  <span className="slider round"></span>
+                </label>
               </div>
-              <div className="device-tile-chevron">»»</div>
             </div>
           </div>
         </div>
-        <div className="control-switches">
-          {/* Hàng bật/tắt ĐÈN */}
-          <div className="control-device-row">
-            <span className="control-device-label">Đèn</span>
-            <div className="control-device-main">
-              <button
-                className={`toggle-btn ${lightOn ? "on" : "off"}`}
-                onClick={handleToggleLight}
-                disabled={lightAuto} 
-              >
-              💡 {lightOn ? "Bật" : "Tắt"}
-              </button>
-            </div>
-          </div>
 
-          {/* Hàng bật/tắt BƠM */}
-          <div className="control-device-row">
-            <span className="control-device-label">Bơm</span>
-            <div className="control-device-main">
-              <button
-                className={`toggle-btn ${pumpOn ? "on" : "off"}`}
-                onClick={handleTogglePump}
-              >
-                💧 {pumpOn ? "Bật" : "Tắt"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-        {/* 6) Lịch sử mở khóa vân tay */}
+        {/* 6) Lịch sử vân tay */}
         <div className="card card-finger">
           <h2>Lịch sử mở khóa (vân tay)</h2>
           <table className="finger-table">
             <thead>
               <tr>
                 <th>Thời gian</th>
-                <th>ID vân tay</th>
+                <th>ID</th>
                 <th>Trạng thái</th>
               </tr>
             </thead>
@@ -329,7 +275,7 @@ export default function Dashboard() {
               {fingerHistory.length === 0 && (
                 <tr>
                   <td colSpan="3" style={{ textAlign: "center" }}>
-                    Chưa có lịch sử vân tay.
+                    Chưa có dữ liệu.
                   </td>
                 </tr>
               )}
@@ -337,69 +283,55 @@ export default function Dashboard() {
           </table>
         </div>
 
-        {/* 7) Biểu đồ nhiệt độ */}
+        {/* 7 & 8) Biểu đồ */}
         <div
           className="card card-chart card-chart-temp"
           onClick={() => setExpandedChart("temperature")}
         >
           <div className="card-chart-header">
-            <h2>Biểu đồ nhiệt độ</h2>
-            <span className="card-chart-hint">Nhấn để phóng to</span>
+            <h2>Nhiệt độ</h2>
+            <span className="card-chart-hint">Phóng to</span>
           </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="timeLabel" />
-                <YAxis />
+                <XAxis dataKey="timeLabel" hide />
+                <YAxis width={30} />
                 <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="temperature"
-                  dot={false}
-                />
+                <Line type="monotone" dataKey="temperature" stroke="#ff7300" dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* 8) Biểu đồ độ ẩm (nhỏ, bên phải) */}
         <div
           className="card card-chart card-chart-humidity"
           onClick={() => setExpandedChart("humidity")}
         >
           <div className="card-chart-header">
-            <h2>Biểu đồ độ ẩm</h2>
-            <span className="card-chart-hint">Nhấn để phóng to</span>
+            <h2>Độ ẩm</h2>
+            <span className="card-chart-hint">Phóng to</span>
           </div>
           <div className="chart-wrapper">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="timeLabel" />
-                <YAxis />
+                <XAxis dataKey="timeLabel" hide />
+                <YAxis width={30} />
                 <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="humidity"
-                  dot={false}
-                />
+                <Line type="monotone" dataKey="humidity" stroke="#387908" dot={false} strokeWidth={2} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
+
+      {/* Modal phóng to biểu đồ */}
       {expandedChart && (
         <div className="chart-modal" onClick={() => setExpandedChart(null)}>
-          <div
-            className="chart-modal-content"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2>
-              {expandedChart === "temperature"
-                ? "Biểu đồ nhiệt độ"
-                : "Biểu đồ độ ẩm"}
-            </h2>
+          <div className="chart-modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>{expandedChart === "temperature" ? "Biểu đồ nhiệt độ" : "Biểu đồ độ ẩm"}</h2>
             <div className="chart-wrapper chart-wrapper-large">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
@@ -409,12 +341,10 @@ export default function Dashboard() {
                   <Tooltip />
                   <Line
                     type="monotone"
-                    dataKey={
-                      expandedChart === "temperature"
-                        ? "temperature"
-                        : "humidity"
-                    }
+                    dataKey={expandedChart === "temperature" ? "temperature" : "humidity"}
+                    stroke={expandedChart === "temperature" ? "#ff7300" : "#387908"}
                     dot={false}
+                    strokeWidth={2}
                   />
                 </LineChart>
               </ResponsiveContainer>

@@ -420,3 +420,82 @@
     grid-row: auto;
   }
 }
+
+.switch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding: 0 4px;
+}
+
+.switch-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Icon nhỏ bên cạnh chữ*/
+.switch-icon {
+  font-size: 18px;
+  color: #6b7280;
+}
+
+/* Container của nút gạt */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+}
+
+/* Input ẩn*/
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Phần thanh trượt*/
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #cbd5e1; /* Màu xám khi tắt */
+  transition: .3s;
+  border-radius: 34px;
+}
+
+/*chấm tròn*/
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 22px;
+  width: 22px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Khi active (checked) */
+input:checked + .slider {
+  background-color: #4f46e5; 
+}
+
+/* Khi active */
+input:checked + .slider:before {
+  transform: translateX(22px);
+}
+
+/* Khi disabled */
+input:disabled + .slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #e2e8f0;
+}
