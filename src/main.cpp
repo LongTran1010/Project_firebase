@@ -13,9 +13,11 @@
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include "time.h"
+#include "ConfigWS.h"
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+
 //WiFiClientSecure firebaseClient;
 
 #define FIREBASE_HOST "nhom100htn-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -45,6 +47,9 @@ const char* topic_light = "home/sensors/light";
 const char* topic_sm = "home/sensors/sm";
 const char* mqtt_topic_sub = "home/actuators/mqtt";
 const char* mqtt_topic_ota = "home/device/fw_version";
+
+ConfigWS wfconf("setup_webserser", "12345678");
+Config wifiConfig;
 
 TaskHandle_t taskMQTT;
 SensorDHT22 DHT22sensor(26, DHT22, client, topic_dht);
@@ -240,7 +245,7 @@ void firebaseLog_Task(void* pvParameters){
     float humi = fb_humi;
     int light = fb_light;
     float sm = fb_sm;
-    if(!isnan(temp) && !isnan(humi)/* || light >= 0 || !isnan(sm)*/){
+    if(!isnan(temp) && !isnan(humi) || light >= 0 /*1|| !isnan(sm)*/){
       struct tm timeinfo;
       if(!getLocalTime(&timeinfo)){
         Serial.println("Failed to obtain time");
@@ -336,7 +341,13 @@ void MQTTSubscribeTask(void* pvParameters){
 void setup() {
   Serial.begin(115200);
   Serial2.begin(57600, SERIAL_8N1, 16, 17);
-  connectWiFi();
+  if(!wfconf.ensureWiFi(wifiConfig, 15000)){
+    Serial.println("Failed to connect to WiFi and get config.");
+    //Xử lý khi không kết nối được WiFi
+    //Ví dụ: Khởi động lại thiết bị hoặc vào chế độ AP để cấu hình lại
+    while(true) vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+  //connectWiFi();
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   Serial.println("Time synchronized.");
   xTaskCreatePinnedToCore(
@@ -361,7 +372,7 @@ void setup() {
 
   //Khởi tạo các sensor-task
   DHT22sensor.begin(); DHT22sensor.start();
-  //LightSensor.begin(); LightSensor.start();
+  LightSensor.begin(); LightSensor.start();
   //SoilMoisture.begin(); SoilMoisture.start();
   //fingerprint.begin(); fingerprint.start();
   //xTaskCreatePinnedToCore(MQTTSubscribeTask, "MQTT Subcribe Task", 4096, NULL, 1, &taskMQTT, 1);
