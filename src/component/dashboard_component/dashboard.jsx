@@ -256,31 +256,37 @@ export default function Dashboard() {
         {/* 6) Lịch sử vân tay */}
         <div className="card card-finger">
           <h2>Lịch sử mở khóa (vân tay)</h2>
-          <table className="finger-table">
-            <thead>
-              <tr>
-                <th>Thời gian</th>
-                <th>ID</th>
-                <th>Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fingerHistory.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.time}</td>
-                  <td>{row.finger_id}</td>
-                  <td>{row.status || "OK"}</td>
-                </tr>
-              ))}
-              {fingerHistory.length === 0 && (
+          <div className="table-container">
+            <table className="finger-table">
+              <thead>
                 <tr>
-                  <td colSpan="3" style={{ textAlign: "center" }}>
-                    Chưa có dữ liệu.
-                  </td>
+                  <th>Thời gian</th>
+                  <th>ID</th>
+                  <th>Trạng thái</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {fingerHistory.map((row) => (
+                  <tr key={row.id}>
+                    <td>{row.time}</td>
+                    <td>{row.finger_id === -1 ? "Người lạ" : row.finger_id}</td>
+                    <td>
+                      <span className={`status-badge ${row.status === "OK" ? "ok" : "fail"}`}>
+                        {row.status || "OK"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {fingerHistory.length === 0 && (
+                  <tr>
+                    <td colSpan="3" style={{ textAlign: "center" }}>
+                      Chưa có dữ liệu.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* 7 & 8) Biểu đồ */}

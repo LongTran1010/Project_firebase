@@ -499,3 +499,51 @@ input:disabled + .slider {
   cursor: not-allowed;
   background-color: #e2e8f0;
 }
+
+/* 1. Giới hạn chiều cao và bật thanh cuộn */
+.table-container {
+  max-height: 250px; /* Chiều cao tối đa, quá mức này sẽ hiện thanh cuộn */
+  overflow-y: auto;  /* Bật cuộn dọc */
+  margin-top: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+.table-container::-webkit-scrollbar {
+  width: 6px;
+}
+.table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 3. Giữ tiêu đề bảng (Header) luôn dính ở trên cùng khi cuộn */
+.finger-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #ffffff; 
+  z-index: 1; 
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Bóng nhẹ ngăn cách header */
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.status-badge.ok {
+  background-color: #dcfce7;
+  color: #166534;
+}
+.status-badge.fail {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
