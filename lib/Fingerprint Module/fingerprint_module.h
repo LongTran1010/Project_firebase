@@ -5,12 +5,19 @@
 #include <TaskBase.h>
 #include <Arduino.h>
 #include <Adafruit_Fingerprint.h>
+#include <freertos/queue.h>
+
+struct FingerLogData {
+  int id;
+  bool status;
+};
 
 class FingerprintModule : public TaskBase {
   public:
     FingerprintModule(HardwareSerial* serial, uint8_t relayPin, uint8_t buzzerPin);
 
     void begin();
+    void setLogQueue(QueueHandle_t queue);
     void setEnrollMode(bool mode);
     bool isEnrollMode() const;
     void deleteFingerprint(uint8_t id);
@@ -22,6 +29,7 @@ class FingerprintModule : public TaskBase {
     Adafruit_Fingerprint finger;
     HardwareSerial* hwSerial;
     uint8_t relayPin, buzzerPin;
+    QueueHandle_t logQueue = NULL;
     bool enrollMode = false;
     unsigned long timeWait;
     int id = 1;

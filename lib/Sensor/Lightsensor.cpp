@@ -46,13 +46,17 @@ bool LightSensor_wRelay::isAutoMode() const {
 void LightSensor_wRelay::setManualRelay(bool on) {
   autoMode = false; //Tắt auto khi điều khiển tay
   manual = on;
+  if(relayStatus != on){
+    relayStatus = on;
+    RelayOutput();
+  }
   Serial.print("Light manual control: ");
   Serial.println(on ? "ON" : "OFF");
   RelayOutput();
 }
 
 void LightSensor_wRelay::RelayOutput() {
-  digitalWrite(relayPin, relayStatus ? LOW : HIGH); 
+  digitalWrite(relayPin, relayStatus ? HIGH : LOW); 
 }
 void LightSensor_wRelay::run() {
   while (1) {

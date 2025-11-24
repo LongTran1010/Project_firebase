@@ -51,6 +51,7 @@ const char* mqtt_topic_ota = "home/device/fw_version";
 ConfigWS wfconf("setup_webserser", "12345678");
 Config wifiConfig;
 
+QueueHandle_t fingerQueue;
 TaskHandle_t taskMQTT;
 SensorDHT22 DHT22sensor(26, DHT22, client, topic_dht);
 LightSensor_wRelay LightSensor(34, /*relayPin*/33, client, topic_light);
@@ -102,6 +103,7 @@ bool firebaseConnected(const String& path, const String& json) {
   HTTPClient http;
   WiFiClientSecure firebaseClient;
   firebaseClient.setInsecure(); // Bỏ qua xác thực SSL (chỉ dùng trong môi trường tin cậy)
+  http.setTimeout(5000); // Hủy request nếu đợi quá 5 giây
   if(!http.begin(firebaseClient, url)){
     Serial.println("Unable to connect");
     return false;
@@ -132,6 +134,7 @@ bool firebaseGet(const String& path, DynamicJsonDocument& doc) {
   HTTPClient http;
   WiFiClientSecure firebaseClient;
   firebaseClient.setInsecure();
+  http.setTimeout(5000); // Hủy request nếu đợi quá 5 giây
   if(!http.begin(firebaseClient, url)){
     Serial.println("Unable to connect");
     return false;
@@ -233,7 +236,7 @@ void firebaseControl_Task(void* pvParameters){
       Serial.println(pumpOn ? "ON" : "OFF");
     }
     controlDoc.clear();
-    vTaskDelay(pdMS_TO_TICKS(5000)); //Kiểm tra lệnh mỗi 5 giây
+    vTaskDelay(pdMS_TO_TICKS(500)); //Kiểm tra lệnh mỗi 0.5 giây
   }
 }
 
@@ -245,7 +248,7 @@ void firebaseLog_Task(void* pvParameters){
     float humi = fb_humi;
     int light = fb_light;
     float sm = fb_sm;
-    if(!isnan(temp) && !isnan(humi) || light >= 0 /*1|| !isnan(sm)*/){
+    if(!isnan(temp) && !isnan(humi) && light >= 0 && !isnan(sm)){
       struct tm timeinfo;
       if(!getLocalTime(&timeinfo)){
         Serial.println("Failed to obtain time");
@@ -255,9 +258,9 @@ void firebaseLog_Task(void* pvParameters){
       String logJson = "{";
       logJson += "\"time\":\"" + String(timeStr) + "\",";
       logJson += "\"temperature\": " + String(temp, 1) + ",";
-      logJson += "\"humidity\": " + String(humi, 1) /*+ ","*/;
-      //logJson += "\"soil_moisture\": " + String(sm, 1) + ",";
-      //logJson += "\"light\": " + String(light) ;
+      logJson += "\"humidity\": " + String(humi, 1) + ",";
+      logJson += "\"soil_moisture\": " + String(sm, 1) + ",";
+      logJson += "\"light\": " + String(light) ;
       logJson += "}";
 
       sampleId++;
@@ -269,48 +272,72 @@ void firebaseLog_Task(void* pvParameters){
   }
 }
 
-void callback(char* topic, byte* payload, unsigned int length) {
-  Serial.print("[callback] ");
-  Serial.println(topic);
-  Serial.print(" -> ");
-  String message;
-  for (unsigned int i = 0; i < length; i++) {
-    message += (char)payload[i];
-  }
-  Serial.print("Received MQTT message: ");
-  Serial.println(message);
-
-  // Parse JSON
-  DynamicJsonDocument doc(512);
-  DeserializationError error = deserializeJson(doc, message.c_str());
-
-  if(!error){
-    //Xử lý firmware update
-    if(doc.containsKey("fw_version") && doc.containsKey("fw_url")){
-      String newVersion = doc["fw_version"].as<String>();
-      String newUrl = doc["fw_url"].as<String>();
-      OTAUpdate::getInstance()->checkForUpdate(newVersion, newUrl);
-      //bool ledState = doc["led"];
-      //digitalWrite(LED_PIN, ledState ? HIGH : LOW);
-      //Serial.print("LED State: ");
-      //Serial.println(ledState ? "ON" : "OFF");
+void firebaseFingerLog_Task(void* pvParameters){
+  Serial.println("FirebaseFingerLogTask STARTED on core " + String(xPortGetCoreID()));
+  FingerLogData logData;
+  for(;;){
+    //Chờ dữ liệu từ queue, luôn chờ tới khi có
+    if(xQueueReceive(fingerQueue, &logData, portMAX_DELAY) == pdTRUE){
+      struct tm timeinfo;
+      if(getLocalTime(&timeinfo)){
+        char timeStr[32];
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        char keyStr[20];
+        strftime(keyStr, sizeof(keyStr), "%Y%m%d%H%M%S", &timeinfo);
+        String logJson = "{";
+        logJson += "\"finger_id\": " + String(logData.id) + ",";
+        logJson += "\"status\": \"" + String(logData.status ? "OK" : "FAIL") + "\",";
+        logJson += "\"time\": \"" + String(timeStr) + "\"";
+        logJson += "}";
+        String path = "/fingerHistory/" + String(keyStr);
+        firebaseConnected(path, logJson);
+        Serial.println("Fingerprint log to: " + path);
+      }
     }
-    //Xử lý máy bơm
-    if(doc.containsKey("pump")){
-      bool on = doc["pump"];
-      Serial.print("Pump command received: ");
-      Serial.println(on ? "ON" : "OFF");
-      SoilMoisture.setPumpControl(on);
-    }else if(doc.containsKey("pump1")){
-      bool on = doc["pump1"];
-      Serial.println(on ? "ON" : "OFF");
-      SoilMoisture.setPumpControl(on);     
-    }
-  }else{ 
-    Serial.print("JSON Parse Error: ");
-    Serial.println(error.c_str());
   }
 }
+// void callback(char* topic, byte* payload, unsigned int length) {
+//   Serial.print("[callback] ");
+//   Serial.println(topic);
+//   Serial.print(" -> ");
+//   String message;
+//   for (unsigned int i = 0; i < length; i++) {
+//     message += (char)payload[i];
+//   }
+//   Serial.print("Received MQTT message: ");
+//   Serial.println(message);
+
+//   // Parse JSON
+//   DynamicJsonDocument doc(512);
+//   DeserializationError error = deserializeJson(doc, message.c_str());
+
+//   if(!error){
+//     //Xử lý firmware update
+//     if(doc.containsKey("fw_version") && doc.containsKey("fw_url")){
+//       String newVersion = doc["fw_version"].as<String>();
+//       String newUrl = doc["fw_url"].as<String>();
+//       OTAUpdate::getInstance()->checkForUpdate(newVersion, newUrl);
+//       //bool ledState = doc["led"];
+//       //digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+//       //Serial.print("LED State: ");
+//       //Serial.println(ledState ? "ON" : "OFF");
+//     }
+//     //Xử lý máy bơm
+//     if(doc.containsKey("pump")){
+//       bool on = doc["pump"];
+//       Serial.print("Pump command received: ");
+//       Serial.println(on ? "ON" : "OFF");
+//       SoilMoisture.setPumpControl(on);
+//     }else if(doc.containsKey("pump1")){
+//       bool on = doc["pump1"];
+//       Serial.println(on ? "ON" : "OFF");
+//       SoilMoisture.setPumpControl(on);     
+//     }
+//   }else{ 
+//     Serial.print("JSON Parse Error: ");
+//     Serial.println(error.c_str());
+//   }
+// }
 // void MQTTSubscribeTask(void *pvParameters) {
 //   Serial.println("[MQTT Task] Started MQTTSubscribeTask");
 //   for (;;) {
@@ -321,12 +348,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 //     client.loop();
 //     vTaskDelay(10 / portTICK_PERIOD_MS);  
 //   }
-// }
+// } cái này sai.
  
-void MQTTSubscribeTask(void* pvParameters){
+/*void MQTTSubscribeTask(void* pvParameters){
   Serial.println(">> MQTTSubscribeTask STARTED on core " + String(xPortGetCoreID()));
   client.setServer(mqtt_server, mqtt_port);
-  client.setCallback(callback);
+  //client.setCallback(callback);
   client.setBufferSize(256);
   client.setKeepAlive(30); // 30 giây
 
@@ -335,8 +362,8 @@ void MQTTSubscribeTask(void* pvParameters){
   for(;;){
     client.loop();
     vTaskDelay(10 / portTICK_PERIOD_MS);  
-  }
-}
+  }xài cái này
+}*/
 
 void setup() {
   Serial.begin(115200);
@@ -350,6 +377,10 @@ void setup() {
   //connectWiFi();
   configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
   Serial.println("Time synchronized.");
+  fingerQueue = xQueueCreate(10, sizeof(FingerLogData));
+  if(fingerQueue == NULL){
+    Serial.println("Failed to create fingerQueue");
+  }
   xTaskCreatePinnedToCore(
       firebaseConfig_Task, 
       "FirebaseConfigTask", 
@@ -373,12 +404,30 @@ void setup() {
   //Khởi tạo các sensor-task
   DHT22sensor.begin(); DHT22sensor.start();
   LightSensor.begin(); LightSensor.start();
-  //SoilMoisture.begin(); SoilMoisture.start();
-  //fingerprint.begin(); fingerprint.start();
+  SoilMoisture.begin(); SoilMoisture.start();
+  fingerprint.begin(); fingerprint.setLogQueue(fingerQueue); fingerprint.start();
   //xTaskCreatePinnedToCore(MQTTSubscribeTask, "MQTT Subcribe Task", 4096, NULL, 1, &taskMQTT, 1);
   xTaskCreatePinnedToCore(
       firebaseLog_Task, 
       "FirebaseLogTask", 
+      8192, 
+      NULL, 
+      1,      // priority
+      NULL, 
+      0       // core 0
+  );
+  xTaskCreatePinnedToCore(
+      firebaseControl_Task, 
+      "FirebaseControlTask", 
+      8192, 
+      NULL, 
+      1,      // priority
+      NULL, 
+      0       // core 0
+  );
+  xTaskCreatePinnedToCore(
+      firebaseFingerLog_Task, 
+      "FirebaseFingerLogTask", 
       8192, 
       NULL, 
       1,      // priority

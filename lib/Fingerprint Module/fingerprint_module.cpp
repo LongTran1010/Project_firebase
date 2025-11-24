@@ -138,6 +138,11 @@ void FingerprintModule::getFingerprintIDs() {
   id = lastID + 1;
 }
 
+//Đưa hàng đợi log vân tay
+void FingerprintModule::setLogQueue(QueueHandle_t queue) {
+  this->logQueue = queue;
+}
+
 //Quét vân tay
 //Nhận diện vân tay và điều khiển relay
 uint8_t FingerprintModule::getFingerprintID() {
@@ -153,9 +158,28 @@ uint8_t FingerprintModule::getFingerprintID() {
     Serial.println(" Open the door!");
     controlRelay();
     beep(1, 200);
+    if(logQueue != NULL){
+      FingerLogData logData;
+      logData.id = finger.fingerID;
+      logData.status = true;
+      //Gửi luôn vào queue, k chờ, k bị delay cảm biến
+      xQueueSend(logQueue, &logData, 0);
+    }
     return finger.fingerID;
-  } else {
-    Serial.println("No match found. Fingerprint not recognized!");
+  }else if(p == FINGERPRINT_NOTFOUND){
+    Serial.println("No match found. Fingerprint not recognized! (Access Denied)");
+    beep(3, 200);
+    if(logQueue != NULL){
+      FingerLogData logData;
+      logData.id = -1;
+      logData.status = false;
+      //Gửi luôn vào queue, k chờ, k bị delay cảm biến
+      xQueueSend(logQueue, &logData, 0);
+    }
+    return p;
+  }else{
+    Serial.println("Other error");
+    return p;
   }
 
   beep(2, 500);
