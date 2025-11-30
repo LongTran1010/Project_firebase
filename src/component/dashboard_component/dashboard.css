@@ -500,6 +500,43 @@ input:disabled + .slider {
   background-color: #e2e8f0;
 }
 
+/* Cấu hình chu kỳ gửi dữ liệu cho cảm biến */
+.config-row {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.config-label {
+  font-weight: 500;
+}
+
+.config-input {
+  width: 60px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  border: none;
+  outline: none;
+  font-size: 11px;
+  text-align: center;
+}
+
+.card-humidity .config-input,
+.card-soil .config-input,
+.card-light .config-input {
+  color: #111827;
+}
+
+.config-unit {
+  opacity: 0.9;
+}
+
+
 /* 1. Giới hạn chiều cao và bật thanh cuộn */
 .table-container {
   max-height: 250px; /* Chiều cao tối đa, quá mức này sẽ hiện thanh cuộn */

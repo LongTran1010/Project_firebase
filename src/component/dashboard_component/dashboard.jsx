@@ -39,6 +39,11 @@ export default function Dashboard() {
   const [lightAuto, setLightAuto] = useState(true);
   const [expandedChart, setExpandedChart] = useState(null);
 
+  //Chu kỳ gửi dữ liệu (giây)
+  const [dhtIntervalSec, setDhtIntervalSec] = useState(10);   // mặc định 10s
+  const [lightIntervalSec, setLightIntervalSec] = useState(10); 
+  const [soilIntervalSec, setSoilIntervalSec] = useState(10); 
+
   const [fingerHistory, setFingerHistory] = useState([]);
   const [now, setNow] = useState(new Date());
 
@@ -101,6 +106,37 @@ export default function Dashboard() {
     return () => unsubscribe();
   }, []);
 
+  //Lắng nghe device
+  useEffect(() => {
+    const dhtRef = ref(database, "devices/dht_1/config/sendInterval");
+    const unsubscribeDht = onValue(dhtRef, (snap) => {
+      const val = snap.val();
+      if(typeof val === "number" && val > 0){
+        setDhtIntervalSec(Math.round(val/1000));
+      }
+    });
+
+    const lightRef = ref(database, "devices/light_1/config/sendInterval");
+    const unsubscribeLight = onValue(lightRef, (snap) => {
+      const val = snap.val();
+      if(typeof val === "number" && val > 0){
+        setLightIntervalSec(Math.round(val/1000));
+      }
+    });
+
+    const soilRef = ref(database, "devices/soil_moisture_1/config/sendInterval");
+    const unsubscribeSoil = onValue(soilRef, (snap) => {
+      const val = snap.val();
+      if(typeof val === "number" && val > 0){
+        setSoilIntervalSec(Math.round(val/1000));
+      }
+    });
+    return () => {
+      unsubscribeDht();
+      unsubscribeLight();
+      unsubscribeSoil();
+    };
+  }, []);
   // -- HANDLERS --
 
   // Xử lý bật tắt Auto bằng Switch
@@ -121,6 +157,30 @@ export default function Dashboard() {
   const handlePumpSwitch = (e) => {
     const isOn = e.target.checked;
     set(ref(database, "control/pump"), isOn);
+  };
+
+  const applyDhtInterval = (sec) => {
+    let s = parseInt(sec, 10);
+    if (isNaN(s) || s < 1) s = 1;         // tối thiểu 1s
+    const ms = s * 1000;
+    setDhtIntervalSec(s);
+    set(ref(database, "devices/dth_1/config/sendInterval"), ms);
+  };
+
+  const applyLightInterval = (sec) => {
+    let s = parseInt(sec, 10);
+    if (isNaN(s) || s < 1) s = 1;
+    const ms = s * 1000;
+    setLightIntervalSec(s);
+    set(ref(database, "devices/light_1/config/sendInterval"), ms);
+  };
+
+  const applySoilInterval = (sec) => {
+    let s = parseInt(sec, 10);
+    if (isNaN(s) || s < 1) s = 1;
+    const ms = s * 1000;
+    setSoilIntervalSec(s);
+    set(ref(database, "devices/soil_moisture_1/config/sendInterval"), ms);
   };
 
   const chartData = history.map((row) => ({
@@ -167,6 +227,19 @@ export default function Dashboard() {
           <p className="card-sub">
             Cập nhật: {latest ? latest.time : "N/A"}
           </p>
+          <div className="config-row">
+            <span className="config-label">Chu kỳ gửi:</span>
+            <input
+              type="number"
+              min={1}
+              max={3600}
+              value={dhtIntervalSec}
+              onChange={(e) => setDhtIntervalSec(e.target.value)}
+              onBlur={(e) => applyDhtInterval(e.target.value)}
+              className="config-input"
+            />
+            <span className="config-unit">giây</span>
+          </div>
         </div>
 
         {/* 3) Độ ẩm đất */}
@@ -180,6 +253,19 @@ export default function Dashboard() {
           <p className="card-sub">
             Cập nhật: {latest ? latest.time : "N/A"}
           </p>
+          <div className="config-row">
+            <span className="config-label">Chu kỳ gửi:</span>
+            <input
+              type="number"
+              min={1}
+              max={3600}
+              value={soilIntervalSec}
+              onChange={(e) => setSoilIntervalSec(e.target.value)}
+              onBlur={(e) => applySoilInterval(e.target.value)}
+              className="config-input"
+            />
+            <span className="config-unit">giây</span>
+          </div>
         </div>
 
         {/* 4) Ánh sáng */}
@@ -188,7 +274,21 @@ export default function Dashboard() {
           <p className="card-big-value">
             {latest ? formatLight(latest.light) : "--"}
           </p>
-          <p className="card-sub">Trạng thái: {latest ? formatLight(latest.light) : "N/A"}</p>
+          <p className="card-sub">Trạng thái: {latest ? formatLight(latest.light) : "N/A"}
+          </p>
+          <div className="config-row">
+            <span className="config-label">Chu kỳ gửi:</span>
+            <input
+              type="number"
+              min={1}
+              max={3600}
+              value={lightIntervalSec}
+              onChange={(e) => setLightIntervalSec(e.target.value)}
+              onBlur={(e) => applyLightInterval(e.target.value)}
+              className="config-input"
+            />
+            <span className="config-unit">giây</span>
+          </div>
         </div>
 
         {/* 5) ĐIỀU KHIỂN*/}
