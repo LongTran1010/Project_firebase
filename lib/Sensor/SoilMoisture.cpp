@@ -4,7 +4,7 @@
 #include <ArduinoJson.h>
 
 extern float fb_sm;
-extern uint32_t sm_sendInterval;
+volatile extern uint32_t sm_sendInterval;
 bool firebaseConnected(const String& path, const String& json);
 static const char* sm_device_ID= "soil_moisture_1";
 
@@ -40,9 +40,12 @@ void SoilMoistureSensor::run() {
         // String path = "/devices/" + String(sm_device_ID) + "/telemetry/soil_moisture";
         // //firebaseConnected(path, fbJson);
 
-        uint32_t interval = sm_sendInterval;
-        if(interval < 1000) interval = 1000;
-        vTaskDelay(interval / portTICK_PERIOD_MS);
+        uint32_t interval = 0;
+        while (interval < sm_sendInterval){
+        vTaskDelay(1000/portTICK_PERIOD_MS);
+        interval += 1000;
+        if(interval >= sm_sendInterval) break;
+        }
     }
 }
 

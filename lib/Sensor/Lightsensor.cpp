@@ -3,7 +3,7 @@
 #include <ArduinoJson.h>
 
 extern int fb_light;
-extern uint32_t light_sendInterval;
+volatile extern uint32_t light_sendInterval;
 bool firebaseConnected(const String& path, const String& json);
 static const char* light_device_ID= "light_1";
 
@@ -91,8 +91,11 @@ void LightSensor_wRelay::run() {
     // String path = "/devices/" + String(light_device_ID) + "/telemetry/light";
     // //firebaseConnected(path, fbJson);
 
-    uint32_t interval = light_sendInterval;
-    if(interval < 1000) interval = 1000;
-    vTaskDelay(interval / portTICK_PERIOD_MS);
+    uint32_t interval = 0;
+    while (interval < light_sendInterval){
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      interval += 1000;
+      if(interval >= light_sendInterval) break;
+    }
   }
 }

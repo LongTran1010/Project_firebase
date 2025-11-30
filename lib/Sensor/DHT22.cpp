@@ -2,7 +2,7 @@
 
 extern float fb_temp;
 extern float fb_humi;
-extern uint32_t dht_sendInterval;
+volatile extern uint32_t dht_sendInterval;
 bool firebaseConnected(const String& path, const String& json);
 static const char* dht_device_ID = "dth_1";
 
@@ -45,8 +45,11 @@ void SensorDHT22::run() {
     } else {
       Serial.println("Failed to read DHT sensor.");
     }
-    uint32_t interval = dht_sendInterval;
-    if(interval < 1000) interval = 1000; //Giới hạn tối thiểu 1 giây
-    vTaskDelay(interval / portTICK_PERIOD_MS);
+    uint32_t interval = 0;
+    while (interval < dht_sendInterval){
+      vTaskDelay(1000/portTICK_PERIOD_MS);
+      interval += 1000;
+      if(interval >= dht_sendInterval) break;
+    }
   }
 }

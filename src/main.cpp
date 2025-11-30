@@ -14,7 +14,7 @@
 #include <WiFiClientSecure.h>
 #include "time.h"
 #include "ConfigWS.h"
-
+#include "esp_wifi.h"
 WiFiClient espClient;
 PubSubClient client(espClient);
 
@@ -26,16 +26,16 @@ const char* ntpServer = "pool.ntp.org";
 const long  gmtOffset_sec = 7 * 3600; //GMT+7
 const int   daylightOffset_sec = 0;
 
-float fb_temp =  NAN;
-float fb_humi =  NAN;
-int fb_light = -1;
-float fb_sm = NAN;
+volatile float fb_temp =  NAN;
+volatile float fb_humi =  NAN;
+volatile int fb_light = -1;
+volatile float fb_sm = NAN;
 unsigned long sampleId = 0;
 
 String device_ID = "ESP32_Device_01";
-uint32_t dht_sendInterval = 10000; //Gửi dữ liệu lên Firebase mỗi 10 giây
-uint32_t light_sendInterval = 10000; 
-uint32_t sm_sendInterval = 10000; 
+volatile uint32_t dht_sendInterval = 10000; //Gửi dữ liệu lên Firebase mỗi 10 giây
+volatile uint32_t light_sendInterval = 10000; 
+volatile uint32_t sm_sendInterval = 10000; 
 
 DynamicJsonDocument configDoc(256);
 DynamicJsonDocument controlDoc(256);
@@ -199,7 +199,7 @@ void firebaseConfig_Task(void* pvParameters){
         }
       }
     }
-    vTaskDelay(pdMS_TO_TICKS(10000)); //Kiểm tra config mỗi 10 giây
+    vTaskDelay(pdMS_TO_TICKS(5000)); //Kiểm tra config mỗi 5 giây
   }
 }
 
@@ -368,6 +368,7 @@ void firebaseFingerLog_Task(void* pvParameters){
 void setup() {
   Serial.begin(115200);
   Serial2.begin(57600, SERIAL_8N1, 16, 17);
+  //wfconf.clearSavedWiFi();
   if(!wfconf.ensureWiFi(wifiConfig, 15000)){
     Serial.println("Failed to connect to WiFi and get config.");
     //Xử lý khi không kết nối được WiFi
